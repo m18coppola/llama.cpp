@@ -112,38 +112,6 @@ static void llama_sampler_softmax_impl(llama_token_data_array * cur_p) {
     }
 }
 
-static void llama_sampler_top_nsigma_impl(llama_token_data_array * cur_p, float n) {
-    // compute max_logit
-    float max_logit = -FLT_MAX;
-    for (size_t i = 0; i < cur_p->size; ++i) {
-        max_logit = std::max(max_logit, cur_p->data[i].logit);
-    }
-
-    // compute sigma (standard deviation)
-    float cum_sum = 0.0f;
-    for (size_t i = 0; i < cur_p->size; ++i) {
-        cum_sum += cur_p->data[i].logit;
-    }
-    float mean = cum_sum / cur_p->size;
-
-    cum_sum = 0.0f;
-    for (size_t i = 0; i < cur_p->size; ++i) {
-        cum_sum += powf(cur_p->data[i].logit - mean, 2);
-    }
-
-    float sigma = sqrt(cum_sum / cur_p->size);
-
-    // mask cur_p
-    for (size_t i = 0; i < cur_p->size; ++i) {
-        if (cur_p->data[i].logit < max_logit - n * sigma) {
-            cur_p->data[i].logit = -FLT_MAX;
-        }
-    }
-
-    // softmax
-    llama_sampler_softmax_impl(cur_p);
-}
-
 static void llama_sampler_top_k_impl(llama_token_data_array * cur_p, int32_t k) {
     // TODO: move bucket sort to separate function so that top_p/typical/softmax first is equally fast
     // if (k >= (int32_t)cur_p->size) {
@@ -614,7 +582,37 @@ static const char * llama_sampler_top_nsigma_name(const struct llama_sampler * /
 
 static void llama_sampler_top_nsigma_apply(struct llama_sampler * smpl, llama_token_data_array * cur_p) {
     const auto * ctx = (llama_sampler_top_nsigma *) smpl->ctx;
-    llama_sampler_top_nsigma_impl(cur_p, ctx->n);
+
+    if (ctx->n <= 0.0f || !cur_p->size) {
+        return;
+    }
+
+    // compute max_logit
+    float max_logit = -FLT_MAX;
+    for (size_t i = 0; i < cur_p->size; ++i) {
+        max_logit = std::max(max_logit, cur_p->data[i].logit);
+    }
+
+    // compute sigma (standard deviation)
+    float mean = 0.0f;
+    float m2 = 0.0f;
+    for (size_t i = 0; i < cur_p->size; ++i) {
+        float delta = cur_p->data[i].logit - mean;
+        mean += delta / (i + 1);
+        m2 += delta * (cur_p->data[i].logit - mean);
+    }
+    float variance = m2 / cur_p->size;
+    float sigma = sqrt(variance);
+
+    // mask logits
+    for (size_t i = 0; i < cur_p->size; ++i) {
+        if (cur_p->data[i].logit < max_logit - ctx->n * sigma) {
+            cur_p->data[i].logit = -FLT_MAX;
+        }
+    }
+
+    // softmax
+    llama_sampler_softmax_impl(cur_p);
 }
 
 static struct llama_sampler * llama_sampler_top_nsigma_clone(const struct llama_sampler * smpl) {

@@ -804,6 +804,7 @@ struct server_context {
         slot.params.n_predict           = json_value(data, "n_predict",          json_value(data, "max_tokens", default_params.n_predict));
         slot.params.n_indent            = json_value(data, "n_indent",           default_params.n_indent);
         slot.sparams.top_k              = json_value(data, "top_k",              default_sparams.top_k);
+        slot.sparams.top_nsigma         = json_value(data, "top_nsigma",         default_sparams.top_nsigma);
         slot.sparams.top_p              = json_value(data, "top_p",              default_sparams.top_p);
         slot.sparams.min_p              = json_value(data, "min_p",              default_sparams.min_p);
         slot.sparams.xtc_probability    = json_value(data, "xtc_probability",    default_sparams.xtc_probability);
@@ -1151,6 +1152,7 @@ struct server_context {
             {"dynatemp_range",            slot.sparams.dynatemp_range},
             {"dynatemp_exponent",         slot.sparams.dynatemp_exponent},
             {"top_k",                     slot.sparams.top_k},
+            {"top_nsigma",                slot.sparams.top_nsigma},
             {"top_p",                     slot.sparams.top_p},
             {"min_p",                     slot.sparams.min_p},
             {"xtc_probability",           slot.sparams.xtc_probability},

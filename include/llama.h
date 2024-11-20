@@ -1082,6 +1082,9 @@ extern "C" {
     /// @details Top-K sampling described in academic paper "The Curious Case of Neural Text Degeneration" https://arxiv.org/abs/1904.09751
     LLAMA_API struct llama_sampler * llama_sampler_init_top_k      (int32_t k);
 
+    /// @details Top-nSigma sampling described in academic paper "Top-nSigma: Not All Logits Are You Need" https://arxiv.org/abs/2411.07641
+    LLAMA_API struct llama_sampler * llama_sampler_init_top_nsigma (float n);
+
     /// @details Nucleus sampling described in academic paper "The Curious Case of Neural Text Degeneration" https://arxiv.org/abs/1904.09751
     LLAMA_API struct llama_sampler * llama_sampler_init_top_p      (float   p, size_t min_keep);
 

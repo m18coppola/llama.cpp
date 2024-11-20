@@ -92,7 +92,8 @@ enum common_sampler_type {
     COMMON_SAMPLER_TYPE_TYPICAL_P   = 6,
     COMMON_SAMPLER_TYPE_TEMPERATURE = 7,
     COMMON_SAMPLER_TYPE_XTC         = 8,
-    COMMON_SAMPLER_TYPE_INFILL      = 9,
+    COMMON_SAMPLER_TYPE_TOP_NSIGMA  = 9,
+    COMMON_SAMPLER_TYPE_INFILL      = 10,
 };
 
 // dimensionality reduction methods, used by cvector-generator
@@ -110,6 +111,7 @@ struct common_sampler_params {
     int32_t min_keep           = 0;     // 0 = disabled, otherwise samplers should return at least min_keep tokens
     int32_t top_k              = 40;    // <= 0 to use vocab size
     float   top_p              = 0.95f; // 1.0 = disabled
+    float   top_nsigma         = 0;     // 0.0 = disabled
     float   min_p              = 0.05f; // 0.0 = disabled
     float   xtc_probability    = 0.00f; // 0.0 = disabled
     float   xtc_threshold      = 0.10f; // > 0.5 disables XTC
@@ -143,6 +145,7 @@ struct common_sampler_params {
         COMMON_SAMPLER_TYPE_MIN_P,
         COMMON_SAMPLER_TYPE_XTC,
         COMMON_SAMPLER_TYPE_TEMPERATURE,
+        COMMON_SAMPLER_TYPE_TOP_NSIGMA,
     };
 
     std::string grammar; // optional BNF-like grammar to constrain sampling

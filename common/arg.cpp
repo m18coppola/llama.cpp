@@ -944,6 +944,13 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         }
     ).set_sparam());
     add_opt(common_arg(
+        {"--top-nsigma"}, "N",
+        string_format("top-nsigma sampling (default: %.1f, 0.0 = disabled)", params.sparams.top_nsigma),
+        [](common_params & params, int value) {
+            params.sparams.top_k = value;
+        }
+    ).set_sparam());
+    add_opt(common_arg(
         {"--xtc-probability"}, "N",
         string_format("xtc probability (default: %.1f, 0.0 = disabled)", (double)params.sparams.xtc_probability),
         [](common_params & params, const std::string & value) {

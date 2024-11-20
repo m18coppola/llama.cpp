@@ -112,6 +112,38 @@ static void llama_sampler_softmax_impl(llama_token_data_array * cur_p) {
     }
 }
 
+static void llama_sampler_top_nsigma_impl(llama_token_data_array * cur_p, float n) {
+    // compute max_logit
+    float max_logit = -FLT_MAX;
+    for (size_t i = 0; i < cur_p->size; ++i) {
+        max_logit = std::max(max_logit, cur_p->data[i].logit);
+    }
+
+    // compute sigma (standard deviation)
+    float cum_sum = 0.0f;
+    for (size_t i = 0; i < cur_p->size; ++i) {
+        cum_sum += cur_p->data[i].logit;
+    }
+    float mean = cum_sum / cur_p->size;
+
+    cum_sum = 0.0f;
+    for (size_t i = 0; i < cur_p->size; ++i) {
+        cum_sum += powf(cur_p->data[i].logit - mean, 2);
+    }
+
+    float sigma = sqrt(cum_sum / cur_p->size);
+
+    // mask cur_p
+    for (size_t i = 0; i < cur_p->size; ++i) {
+        if (cur_p->data[i].logit < max_logit - n * sigma) {
+            cur_p->data[i].logit = -FLT_MAX;
+        }
+    }
+
+    // softmax
+    llama_sampler_softmax_impl(cur_p);
+}
+
 static void llama_sampler_top_k_impl(llama_token_data_array * cur_p, int32_t k) {
     // TODO: move bucket sort to separate function so that top_p/typical/softmax first is equally fast
     // if (k >= (int32_t)cur_p->size) {
@@ -566,6 +598,48 @@ struct llama_sampler * llama_sampler_init_top_k(int32_t k) {
         /* .iface = */ &llama_sampler_top_k_i,
         /* .ctx   = */ new llama_sampler_top_k {
             /* .k = */ k,
+        },
+    };
+}
+
+// top-nsigma
+
+struct llama_sampler_top_nsigma {
+    const float n;
+};
+
+static const char * llama_sampler_top_nsigma_name(const struct llama_sampler * /*smpl*/) {
+    return "top-nsigma";
+}
+
+static void llama_sampler_top_nsigma_apply(struct llama_sampler * smpl, llama_token_data_array * cur_p) {
+    const auto * ctx = (llama_sampler_top_nsigma *) smpl->ctx;
+    llama_sampler_top_nsigma_impl(cur_p, ctx->n);
+}
+
+static struct llama_sampler * llama_sampler_top_nsigma_clone(const struct llama_sampler * smpl) {
+    const auto * ctx = (const llama_sampler_top_nsigma *) smpl->ctx;
+    return llama_sampler_init_top_nsigma(ctx->n);
+}
+
+static void llama_sampler_top_nsigma_free(struct llama_sampler * smpl) {
+    delete (llama_sampler_top_nsigma *) smpl->ctx;
+}
+
+static struct llama_sampler_i llama_sampler_top_nsigma_i = {
+    /* .name   = */ llama_sampler_top_nsigma_name,
+    /* .accept = */ nullptr,
+    /* .apply  = */ llama_sampler_top_nsigma_apply,
+    /* .reset  = */ nullptr,
+    /* .clone  = */ llama_sampler_top_nsigma_clone,
+    /* .free   = */ llama_sampler_top_nsigma_free,
+};
+
+struct llama_sampler * llama_sampler_init_top_nsigma(float n) {
+    return new llama_sampler {
+        /* .iface = */ &llama_sampler_top_nsigma_i,
+        /* .ctx   = */ new llama_sampler_top_nsigma {
+            /* .n = */ n,
         },
     };
 }
